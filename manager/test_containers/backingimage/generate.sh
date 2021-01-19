@@ -7,7 +7,8 @@ if [ ! -f parrot.qcow2 ]; then
   sudo qemu-nbd -f qcow2 -c /dev/nbd0 parrot.img
   sudo mkfs -t ext4 /dev/nbd0
   sudo mount /dev/nbd0 parrot
-  curl -L http://cultofthepartyparrot.com/guests-0b1895434d.zip -o parrot.zip
+#  Please update this link if the downloaded file is invalid
+  curl -L https://cultofthepartyparrot.com/guests-01a9353989.zip -o parrot.zip
   sudo unzip -o parrot.zip -d parrot
   rm -f parrot.zip
   sudo umount parrot
@@ -17,9 +18,10 @@ if [ ! -f parrot.qcow2 ]; then
   rm -f parrot.img
 fi
 
-docker build \
-  -t rancher/longhorn-test:baseimage-ext4 \
-  --build-arg BASE_IMAGE=parrot.qcow2 \
-    .
+if [ ! -f parrot.raw ]; then
+  qemu-img convert -f qcow2 -O raw parrot.qcow2 parrot.raw
+fi
 
-docker push rancher/longhorn-test:baseimage-ext4
+# Need to upload this image file to a cloud storage like Google Driver or S3.
+pwd parrot.qcow2
+pwd parrot.raw
