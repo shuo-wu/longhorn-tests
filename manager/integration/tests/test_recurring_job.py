@@ -16,7 +16,7 @@ from common import update_statefulset_manifests, get_self_host_id, \
     get_statefulset_pod_info, wait_volume_kubernetes_status
 from common import write_volume_random_data
 from common import write_pod_volume_random_data
-from common import BASE_IMAGE_LABEL, KUBERNETES_STATUS_LABEL
+from common import KUBERNETES_STATUS_LABEL
 from common import SIZE, Mi, Gi
 from common import SETTING_RECURRING_JOB_WHILE_VOLUME_DETACHED
 
@@ -268,7 +268,7 @@ def test_recurring_job_labels(set_random_backupstore, client, random_labels, vol
     recurring_job_labels_test(client, random_labels, volume_name)  # NOQA
 
 
-def recurring_job_labels_test(client, labels, volume_name, size=SIZE, base_image=""):  # NOQA
+def recurring_job_labels_test(client, labels, volume_name, size=SIZE, backing_image=""):  # NOQA
     host_id = get_self_host_id()
     client.create_volume(name=volume_name, size=size,
                          numberOfReplicas=2)
@@ -316,13 +316,12 @@ def recurring_job_labels_test(client, labels, volume_name, size=SIZE, base_image
     for key, val in iter(labels.items()):
         assert b.labels.get(key) == val
     assert b.labels.get(RECURRING_JOB_LABEL) == RECURRING_JOB_NAME
-    if base_image:
-        assert b.labels.get(BASE_IMAGE_LABEL) == base_image
-        # One extra Label from the BaseImage being set.
-        assert len(b.labels) == len(labels) + 2
-    else:
-        # At least one extra Label from RecurringJob.
-        assert len(b.labels) == len(labels) + 1
+    # One extra Label from RecurringJob.
+    assert len(b.labels) == len(labels) + 1
+    if backing_image:
+        assert b.backingImageName == \
+               backing_image
+        assert b.backingImageURL != ""
 
     cleanup_volume(client, volume)
 
