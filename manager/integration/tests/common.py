@@ -234,6 +234,9 @@ NODE_UPDATE_RETRY_INTERVAL = 6
 NODE_UPDATE_RETRY_COUNT = 30
 disk_being_syncing = "being syncing and please retry later"
 
+FS_TYPE_EXT4 = "ext4"
+FS_TYPE_XFS = "xfs"
+
 # customize the timeout for HDD
 disktype = os.environ.get('LONGHORN_DISK_TYPE')
 if disktype == "hdd":
@@ -790,13 +793,15 @@ def write_volume_dev_random_mb_data(path, offset_in_mb, length_in_mb):
 def get_volume_dev_mb_data_md5sum(path, offset_in_mb, length_in_mb):
     md5sum_command = [
         '/bin/sh', '-c',
-        'dd if=%s bs=1M skip=%d count=%d | md5sum | awk \'{print $1}\'' %
+        'dd if=%s bs=1M skip=%d count=%d | md5sum' %
         (path, offset_in_mb, length_in_mb)
     ]
 
     with timeout(seconds=STREAM_EXEC_TIMEOUT * 5,
                  error_message='Timeout on computing dev md5sum'):
-        return subprocess.check_output(md5sum_command).strip().decode('utf-8')
+        output = subprocess.check_output(
+            md5sum_command).strip().decode('utf-8')
+        return output.split(" ")[1]
 
 
 def size_to_string(volume_size):
