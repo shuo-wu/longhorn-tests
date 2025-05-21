@@ -217,3 +217,61 @@ Test Creating V2 Volume With Backing Image After Replica Rebuilding
     And Create pod 1 using volume 1
     And Wait for pod 1 running
     And Write 1024 MB data to file data.txt in pod 1
+
+Test V2 Fast Replica Rebuilding
+    Given Set setting snapshot-data-integrity-cronjob to * * * * *
+    And Set setting snapshot-data-integrity-immediate-check-after-snapshot-creation to true
+    And Set setting v2-data-engine-fast-replica-rebuilding to true
+    And Set setting v2-data-engine-snapshot-data-integrity to fast-check
+
+    Given Create volume 0 with    size=10Gi    numberOfReplicas=3    dataEngine=v2
+    And Attach volume 0 to node 0
+    And Wait for volume 0 healthy
+
+    And Write data 00 to volume 0
+    And Create snapshot 0 of volume 0
+    And Validate snapshot 0 checksum of volume 0 is calculated within 60 seconds
+
+    And Write data 10 to volume 0
+    And Write data 11 to volume 0
+    And Create snapshot 1 of volume 0
+    And Validate snapshot 1 checksum of volume 0 is calculated within 60 seconds
+
+    And Write data 20 to volume 0
+    And Create snapshot 2 of volume 0
+    And Validate snapshot 2 checksum of volume 0 is calculated within 60 seconds
+
+    When Disable node 1 scheduling
+    And Delete instance-manager on node 1
+
+    Then Wait volume 0 replica on node 1 stopped
+    And Wait for volume 0 degraded
+
+    And Delete snapshot 1 of volume 0
+    And Delete snapshot 0 of volume 0
+    And Validate snapshot 2 checksum of volume 0 is calculated within 60 seconds
+
+    // Comparing with corrupted snapshot 0 in the failed replica, the new valid snapshot 0 has the extra data 01
+    And Write data 00 to volume 0
+    And Write data 01 to volume 0
+    And Create snapshot 0 of volume 0
+    And Validate snapshot 0 checksum of volume 0 is calculated within 60 seconds
+
+    // Comparing with corrupted snapshot 1 in the failed replica, the new valid snapshot 1 does not contain data 11
+    And Write data 10 to volume 0
+    And Create snapshot 1 of volume 0
+    And Validate snapshot 1 checksum of volume 0 is calculated within 60 seconds
+
+    // Comparing with the failed replica, snapshot 3 is a new snapshot (need to be rebuilt later)
+    And Write data 30 to volume 0
+    And Create snapshot 3 of volume 0
+    And Validate snapshot 3 checksum of volume 0 is calculated within 60 seconds
+
+    And Enable node 1 scheduling
+    Then Wait until volume 0 replica rebuilding started on node 1
+    And Wait for volume 0 healthy
+    And Check volume 0 crashed replica reused on node 1
+
+    And Check volume 0 data is intact
+    And Check volume 0 works
+
